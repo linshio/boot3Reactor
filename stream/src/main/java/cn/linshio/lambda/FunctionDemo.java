@@ -43,7 +43,8 @@ public class FunctionDemo {
 
     }
 
-    private static void extracted(Predicate<String> predicate, Supplier<String> supplier, Consumer<Integer> consumer, Function<String, Integer> function) {
+    private static void extracted(Predicate<String> predicate, Supplier<String> supplier,
+                                  Consumer<Integer> consumer, Function<String, Integer> function) {
         boolean test = predicate.test(supplier.get());
         if (test){
             consumer.accept(function.apply(supplier.get()));

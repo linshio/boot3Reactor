@@ -3,6 +3,7 @@ package cn.linshio.reactor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 
@@ -16,11 +17,49 @@ import java.time.Duration;
  */
 public class FluxDemo {
 
-
     public static void main(String[] args) {
+        //concat 合并流
+//        Flux.concat(Flux.just(1,2,3),Flux.just(4,5,6))
+//                .subscribe(System.out::println);
+        Flux.range(1,7)
+                .log()
+                .filter(integer -> integer>3)
+                .log()
+                .map(integer -> "haha->"+integer)
+                .log()
+                .subscribe(System.out::println);
+
+    }
+
+
+    public static void doOn(String[] args) throws IOException {
         // Mono : 0|1个元素的流
         Mono<Integer> just = Mono.just(1);
         just.subscribe(System.out::println);
+
+        System.out.println("===============");
+        //事件感知API  当流发生什么事情的时候能够触发一个回调；系统提前定义好的钩子函数 doOnXXX
+
+        /**
+         *  1.doOnNext :每个数据（流的数据）到达的时候进行触发
+         *  2.doOnEach :每个元素（流的数据和信号）到达的时候进行触发
+         *  3.doOnRequest:消费者请求流元素的时候
+         *  4.doOnError:流发生错误
+         *  5.doOnSubscribe:流被订阅的时候
+         *  6.doOnTerminate:发送取消/预异常信号中断了流
+         *  7.doOnCancel :流中元素被取消的时
+         *  8.doOnDiscard:流中元素被忽略的时候
+         */
+        Flux<Integer> justed = Flux.range(1, 7)
+                .delayElements(Duration.ofSeconds(1))
+                .doOnComplete(()-> System.out.println("流正常结束"))
+                .doOnCancel(()-> System.out.println("流已经被取消"))
+                ;
+
+        justed.subscribe(System.out::println);
+
+        System.in.read();
+
     }
 
     public static void flux(String[] args) throws IOException {
