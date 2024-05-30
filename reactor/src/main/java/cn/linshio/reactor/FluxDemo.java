@@ -1,7 +1,10 @@
 package cn.linshio.reactor;
 
+import org.reactivestreams.Subscription;
+import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.SignalType;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,14 +32,53 @@ public class FluxDemo {
                     return "haha" + integer;
                 });
 
-        // 流只是被订阅 无参的只是将该数据拿来什么也不做 空订阅
-        map.subscribe();
-//        //流被消费 正常消费者 只消费正常元素
-        map.subscribe(System.out::println);
-        //流被消费 正常消费 出现异常的情况进行异常处理
-        map.subscribe(System.out::println,e->e.printStackTrace());
-        //流被消费 正常消费 正常结束后会回调 complete
-        map.subscribe(System.out::println,e->e.printStackTrace(),()-> System.out.println("流正常结束了"));
+//        // 流只是被订阅 无参的只是将该数据拿来什么也不做 空订阅
+//        map.subscribe();
+////        //流被消费 正常消费者 只消费正常元素
+//        map.subscribe(System.out::println);
+//        //流被消费 正常消费 出现异常的情况进行异常处理
+//        map.subscribe(System.out::println,e->e.printStackTrace());
+//        //流被消费 正常消费 正常结束后会回调 complete
+//        map.subscribe(System.out::println,e->e.printStackTrace(),()-> System.out.println("流正常结束了"));
+
+        //自定义订阅者
+        map.subscribe(new BaseSubscriber<String>() {
+            @Override
+            protected Subscription upstream() {
+                return super.upstream();
+            }
+
+            //生命周期钩子1==>流被订阅的时候进行触发
+            @Override
+            protected void hookOnSubscribe(Subscription subscription) {
+                super.hookOnSubscribe(subscription);
+            }
+
+            @Override
+            protected void hookOnNext(String value) {
+                super.hookOnNext(value);
+            }
+
+            @Override
+            protected void hookOnComplete() {
+                super.hookOnComplete();
+            }
+
+            @Override
+            protected void hookOnError(Throwable throwable) {
+                super.hookOnError(throwable);
+            }
+
+            @Override
+            protected void hookOnCancel() {
+                super.hookOnCancel();
+            }
+
+            @Override
+            protected void hookFinally(SignalType type) {
+                super.hookFinally(type);
+            }
+        });
     }
 
 
