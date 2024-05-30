@@ -22,13 +22,21 @@ public class FluxDemo {
         //subscribe 订阅流 ：没订阅之前流什么也不做
 
         Flux<String> map = Flux.range(1, 10)
-                .map(integer -> "haha" + integer);
+                .map(integer -> {
+                    if (integer==9){
+                        integer = integer/0;
+                    }
+                    return "haha" + integer;
+                });
 
         // 流只是被订阅 无参的只是将该数据拿来什么也不做 空订阅
         map.subscribe();
-        //流被消费 正常消费者 只消费正常元素
+//        //流被消费 正常消费者 只消费正常元素
         map.subscribe(System.out::println);
-
+        //流被消费 正常消费 出现异常的情况进行异常处理
+        map.subscribe(System.out::println,e->e.printStackTrace());
+        //流被消费 正常消费 正常结束后会回调 complete
+        map.subscribe(System.out::println,e->e.printStackTrace(),()-> System.out.println("流正常结束了"));
     }
 
 
