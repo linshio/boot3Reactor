@@ -17,7 +17,22 @@ import java.time.Duration;
  */
 public class FluxDemo {
 
+
     public static void main(String[] args) {
+        //subscribe 订阅流 ：没订阅之前流什么也不做
+
+        Flux<String> map = Flux.range(1, 10)
+                .map(integer -> "haha" + integer);
+
+        // 流只是被订阅 无参的只是将该数据拿来什么也不做 空订阅
+        map.subscribe();
+        //流被消费 正常消费者 只消费正常元素
+        map.subscribe(System.out::println);
+
+    }
+
+
+    public static void FluxMono(String[] args) {
         //concat 合并流
 //        Flux.concat(Flux.just(1,2,3),Flux.just(4,5,6))
 //                .subscribe(System.out::println);
