@@ -51,7 +51,11 @@ public class FluxDemo {
             //生命周期钩子1==>流被订阅的时候进行触发
             @Override
             protected void hookOnSubscribe(Subscription subscription) {
-                super.hookOnSubscribe(subscription);
+                //找发布者要一个数据 要完之后hookOnNext就会感知到下一个数据的到来
+                request(1);
+
+                //找发布者要所有的数据
+//                requestUnbounded();
             }
 
             @Override
