@@ -9,6 +9,7 @@ import reactor.core.publisher.SignalType;
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 
 /**
  * ClassName: FluxDemo
@@ -22,15 +23,46 @@ public class FluxDemo {
 
 
     public static void main(String[] args) {
+        new FluxDemo().buffer();
+    }
+
+    private void buffer() {
+        Flux<List<Integer>> buffer = Flux.range(1, 10)
+                //缓冲区：缓冲3个元素：消费一次最多可以拿到3个元素
+                .buffer(3);
+
+        buffer.subscribe(new BaseSubscriber<List<Integer>>() {
+            @Override
+            protected void hookOnSubscribe(Subscription subscription) {
+                //请求一次数据  这里有缓冲区的话就是一次请求来三个数据
+                request(1);
+            }
+
+            @Override
+            protected void hookOnNext(List<Integer> value) {
+                System.out.println("该数据为==>"+value);
+                request(1);
+            }
+        });
+    }
+
+
+    public static void customerSubscribe(String[] args) {
         //subscribe 订阅流 ：没订阅之前流什么也不做
 
+
+        //OnError XXX 、doOnXxx
+        //doOnXxx ：发生这个事件的时候会产生一个回调、仅仅做一个通知处理、通知你（不能改变流）
+        //onXxx  ： 发生这个事件后执行一个动作，可以改变元素、信号
         Flux<String> map = Flux.range(1, 10)
                 .map(integer -> {
                     if (integer==9){
                         integer = integer/0;
                     }
                     return "haha" + integer;
-                });
+                })
+                //流错误的时候会把异常吃掉后转为正常的信号
+                .onErrorComplete();
 
 //        // 流只是被订阅 无参的只是将该数据拿来什么也不做 空订阅
 //        map.subscribe();
@@ -51,7 +83,8 @@ public class FluxDemo {
             //生命周期钩子1==>流被订阅的时候进行触发
             @Override
             protected void hookOnSubscribe(Subscription subscription) {
-                //找发布者要一个数据 要完之后hookOnNext就会感知到下一个数据的到来
+                //找发布者要一次请求数据 要完之后hookOnNext就会感知到下一个数据的到来
+                //request(1)不是表示请求一个数据，而是发起一次请求
                 request(1);
 
                 //找发布者要所有的数据
@@ -60,27 +93,28 @@ public class FluxDemo {
 
             @Override
             protected void hookOnNext(String value) {
-                super.hookOnNext(value);
+                System.out.println("数据到达==>"+value);
+                request(1);
             }
 
             @Override
             protected void hookOnComplete() {
-                super.hookOnComplete();
+                System.out.println("流正常结束了...");
             }
 
             @Override
             protected void hookOnError(Throwable throwable) {
-                super.hookOnError(throwable);
+                System.out.println("流异常结束了..."+throwable.getMessage());
             }
 
             @Override
             protected void hookOnCancel() {
-                super.hookOnCancel();
+                System.out.println("流被取消了...");
             }
 
             @Override
             protected void hookFinally(SignalType type) {
-                super.hookFinally(type);
+                System.out.println("最终回调..."+type);
             }
         });
     }
