@@ -5,8 +5,9 @@ import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
-import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
@@ -22,15 +23,90 @@ import java.util.List;
 public class FluxDemo {
 
 
-    public static void main(String[] args) {
-        new FluxDemo().buffer();
+    public static void main(String[] args) throws IOException {
+        new FluxDemo().thread();
+        System.in.read();
+    }
+
+    //自定义线程调度（重点）
+    public void thread(){
+        //流的发布、中间操作、默认会使用当前线程
+        Flux.range(1,10)
+                //发布者的 线程调度
+                .publishOn(Schedulers.parallel())
+                .log()
+                //订阅者的 线程调度
+                .subscribeOn(Schedulers.single())
+                .log()
+                .subscribe();
+        //只要不指定线程池，默认发布者使用的线程就是订阅者的线程re
+
+        //调度器 ： 线程池
+//        Schedulers.immediate();//默认的：无执行上下文，当前线程运行所有的操作
+//        Schedulers.single();//使用固定的单线程进行操作
+//        Schedulers.boundedElastic();//有界的、弹性调度
+//        Schedulers.parallel();//并发池
+    }
+
+
+    //自定义流中元素的处理规则 (重点)
+    public void handle(){
+        Flux.range(1,10)
+                .handle((value,sink)->{
+                    System.out.println("value==>"+value);
+                    sink.next("haha-"+value);
+                })
+                .log()
+                .subscribe();
+    }
+    //以编程的方式创建徐序列 能够并发使用
+    public void create(){
+        Flux.create(fluxSink -> {
+            for (int i = 0; i < 100; i++) {
+
+            }
+        });
+    }
+
+    //以编程的方式创建徐序列 不能够并发使用
+    public void  generate(){
+        Flux<Object> generate = Flux.generate(()->0,(state,sink) -> {
+            if (state<=10){
+                sink.next(state);//传输数据 可能会抛出 不受检异常（运行时异常）
+            }else {
+                sink.complete();
+            }
+            if (state==7){
+                sink.error(new RuntimeException("7 is not me"));
+            }
+            return state+1;
+        });
+
+        generate.log()
+                .subscribe();
+    }
+
+
+    //限流
+    public void limit(){
+        Flux.range(1,1000)
+                .log()
+                .limitRate(100)
+                .subscribe();
+
+        //75% 预取策略  limitRate(100)
+        //第一次抓取100个数据 ，如果 75% 的元素已经处理完了 则继续抓取新的 75% 元素
     }
 
     private void buffer() {
         Flux<List<Integer>> buffer = Flux.range(1, 10)
                 //缓冲区：缓冲3个元素：消费一次最多可以拿到3个元素
-                .buffer(3);
+                .buffer(3)
+                .log();
 
+        buffer.subscribe();
+
+/*
         buffer.subscribe(new BaseSubscriber<List<Integer>>() {
             @Override
             protected void hookOnSubscribe(Subscription subscription) {
@@ -44,6 +120,7 @@ public class FluxDemo {
                 request(1);
             }
         });
+*/
     }
 
 
