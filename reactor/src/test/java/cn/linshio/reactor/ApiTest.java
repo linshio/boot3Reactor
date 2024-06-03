@@ -3,9 +3,15 @@ package cn.linshio.reactor;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
+import reactor.util.context.Context;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -19,14 +25,143 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ApiTest {
 
 
-    //默认：错误是一种中断的行为
     @Test
-    void error(){
+    void context(){
+        //支持Context的中间操作
+        Flux.just(1,2,3)
+                .transformDeferredContextual((flux,context)->{
+                    System.out.println(flux);
+                    System.out.println(context);
+                    return flux.map(i->i+"==>"+context.get("prefix"));
+                })
+                //上游能够拿到下游的最近一次数据
+                .contextWrite(Context.of("prefix","哈哈"))
+                //ThreadLocal共享了数据 上游的所有人都能够看到 Context由下游传递给上游
+                .subscribe(System.out::println);
+    }
+
+    @Test
+    void parallelFlux(){
+        Flux.range(1,1000000)
+                .buffer(100)
+                .parallel(8)
+                .runOn(Schedulers.newParallel("yy"))
+                .log()
+                .flatMap(list->Flux.fromIterable(list))
+                .collectSortedList(Integer::compareTo)
+                .subscribe(System.out::println);
+    }
+
+    @Test
+    void block(){
+        //阻塞
+        List<Integer> block = Flux.just(1, 2, 4)
+                .map(i -> i + 10)
+                .collectList()
+                .block();
+
+        System.out.println("block = " + block);
+    }
+
+    @Test
+    void sinks() throws InterruptedException, IOException {
+//        Sinks.many(); //发送Flux数据
+//        Sinks.one(); // 发送Mono数据
+
+        //sinks : 接收器，数据管道
+
+//        Sinks.many().unicast();//   单播：这个管道只能绑定单个订阅者 （消费者）
+//        Sinks.many().multicast();// 多播：这个管道可以绑定多个订阅者
+//        Sinks.many().replay();//    重放：这个管道可以重放元素。是否给后来的订阅者把之前存在的数据发送给他
+
+        Sinks.Many<Object> objectMany = Sinks.many()
+                .multicast()
+                .onBackpressureBuffer();
+        new Thread(()->{
+            for (int i = 0; i < 10; i++) {
+                objectMany.tryEmitNext("a-"+i);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }).start();
+
+
+        objectMany.asFlux()
+                .subscribe(s-> System.out.println("s1=>"+s));
+
+        objectMany.asFlux()
+                .subscribe(s-> System.out.println("s2=>"+s));
+
+        System.in.read();
+    }
+
+    @Test
+    void retryAndTimeOut() throws IOException {
+        //超时
+        Flux.just(1)
+                .delayElements(Duration.ofSeconds(3))
+                .log()
+                .timeout(Duration.ofSeconds(2))
+                .retry() //把流从头到尾再重新请求一次
+                .subscribe();
+
+        System.in.read();
+    }
+
+
+    @Test
+    void onErrorContinue(){
+        //onErrorContinue当发生错误的时候会继续
+        Flux.just(1,2,3,0,5)
+                .map(i->10/i)
+                .onErrorContinue((err,value)->{
+                    System.out.println("err = " + err);
+                    System.out.println("value = " + value);
+                    System.out.println("发生了错误，已经记录好了");
+                }).subscribe(v-> System.out.println("v = " + v),
+                        err-> System.out.println("err = " + err),
+                        ()-> System.out.println("流正常结束"));
+    }
+
+    class BusinessException extends RuntimeException{
+        public BusinessException(String msg){
+            super(msg);
+        }
+    }
+
+    @Test
+    void onErrorResume(){
         Flux.just(1,2,4,0,5)
                 .map(integer -> "100 / "+integer+" = "+(100/integer))
+                .onErrorResume(err->Flux.error(new BusinessException(err.getMessage()+"炸了")))
                 .subscribe(v-> System.out.println("v = " + v),
                         err-> System.out.println("err = " + err),
-                        ()-> System.out.println("流结束"));
+                        ()-> System.out.println("流正常结束"));
+
+        Flux.just(1,2,4,0,5)
+                .map(integer -> "100 / "+integer+" = "+(100/integer))
+                .onErrorMap(err->new BusinessException(err.getMessage()+"又炸了"))
+                .subscribe(v-> System.out.println("v = " + v),
+                        err-> System.out.println("err = " + err),
+                        ()-> System.out.println("流正常结束"));
+    }
+
+
+    //默认：错误是一种中断的行为
+    @Test
+    void onErrorReturn(){
+        Flux.just(1,2,4,0,5)
+                .map(integer -> "100 / "+integer+" = "+(100/integer))
+                //吃掉异常，让消费者无法感知 并且返回一个默认值
+//                .onErrorReturn("haha -> stop")
+                //这里也可以对指定的异常进行感知 并且返回一个默认值
+                .onErrorReturn(ArithmeticException.class,"haha -> stop")
+                .subscribe(v-> System.out.println("v = " + v),
+                        err-> System.out.println("err = " + err),
+                        ()-> System.out.println("流正常结束"));
     }
 
 
@@ -154,7 +289,8 @@ public class ApiTest {
         Flux.just("zhang-san","li-si")
                 .flatMap(s->{
                     String[] split = s.split("-");
-                    return Flux.fromArray(split);
+                    String ss = split[0] + " " + split[1];
+                    return Flux.just(ss);
                 })
                 .log()
                 .subscribe();
