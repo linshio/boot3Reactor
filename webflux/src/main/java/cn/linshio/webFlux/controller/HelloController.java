@@ -1,10 +1,16 @@
 package cn.linshio.webFlux.controller;
 
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebSession;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -18,8 +24,14 @@ import java.time.Duration;
 public class HelloController {
 
     @GetMapping("/hello")
-    public String hello(@RequestParam(value = "key",required = false,defaultValue = "hello") String key){
-
+    public String hello(@RequestParam(value = "key",required = false,defaultValue = "hello") String key,
+                        ServerWebExchange exchange, WebSession webSession,
+                        HttpMethod httpMethod, HttpEntity<String> httpEntity){
+        //获取请求头
+        ServerHttpRequest request = exchange.getRequest();
+        //获取响应体
+        ServerHttpResponse response = exchange.getResponse();
+        webSession.getAttribute("aaa");
         return "Hello ==> key=" + key;
     }
 
@@ -28,7 +40,7 @@ public class HelloController {
     //配合Flux，完成SSE：Server Send Event;服务端事件推送
     @GetMapping("/haha")
     public Mono<String> haha(){
-        return Mono.just(5)
+        return Mono.just(0)
                 .map(i->10/i)
                 .map(i->"haha-"+i);
 
