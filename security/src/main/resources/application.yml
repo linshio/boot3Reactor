@@ -5,6 +5,8 @@ spring:
     password: LingXi666
     url: r2dbc:mysql://linshio.cn:3306/test
     name: test
+  main:
+    allow-circular-references: true
 
 logging:
   level:

@@ -10,4 +10,5 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface BookDao extends R2dbcRepository<TBook,Long> {
+
 }
